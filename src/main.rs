@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use core::fmt::Write;
 use core::panic::PanicInfo;
 use embedded_hal::digital::v2::OutputPin;
 use rtic::app;
@@ -8,11 +9,12 @@ use rtt_target::{rprintln, rtt_init_print};
 use stm32f4xx_hal::stm32::{I2C1, SPI1, SPI2};
 use stm32f4xx_hal::{
     delay::Delay,
-    gpio,
+    gpio::{self, gpioa, gpiob, Alternate, AF7},
     i2c::{self, I2c},
     prelude::*,
+    serial::{self, config::Config, Serial},
     spi::{self, Mode, Phase, Polarity, Spi},
-    stm32::{self, TIM2},
+    stm32::{self, TIM2, USART1},
     time::Hertz,
     timer::{Event, Timer},
 };
@@ -24,6 +26,8 @@ const APP: () = {
     struct Resources {
         timer: Timer<TIM2>,
         status: StatusLED,
+        tx: serial::Tx<USART1>,
+        rx: serial::Rx<USART1>,
     }
 
     #[init]
@@ -37,7 +41,7 @@ const APP: () = {
 
         let clocks = rcc.cfgr.use_hse(25u32.mhz()).sysclk(100u32.mhz()).freeze();
 
-        // let mut gpiob = dp.GPIOB.split();
+        let mut gpiob = dp.GPIOB.split();
         // let mut gpioa = dp.GPIOA.split();
         let gpioc = dp.GPIOC.split();
 
@@ -45,7 +49,28 @@ const APP: () = {
 
         let mut status = gpioc.pc13.into_push_pull_output();
 
-        let mut timer = Timer::tim2(dp.TIM2, 5.hz(), clocks);
+        let serial = {
+            // USART1
+            let tx = gpiob.pb6.into_alternate_af7();
+            let rx = gpiob.pb7.into_alternate_af7();
+
+            let mut serial = Serial::usart1(
+                dp.USART1,
+                (tx, rx),
+                Config::default().baudrate(115200.bps()),
+                clocks,
+            )
+            .unwrap();
+
+            // Listen for returned chars
+            serial.listen(serial::Event::Rxne);
+
+            serial
+        };
+
+        let (tx, rx) = serial.split();
+
+        let mut timer = Timer::tim2(dp.TIM2, 1.hz(), clocks);
 
         timer.listen(Event::TimeOut);
 
@@ -54,7 +79,12 @@ const APP: () = {
         rprintln!("Init complete");
 
         // Init the static resources to use them later through RTIC
-        init::LateResources { timer, status }
+        init::LateResources {
+            timer,
+            status,
+            tx,
+            rx,
+        }
     }
 
     // FIXME: RTT doesn't work in sleep, and default idle() uses WFI which puts device to sleep.
@@ -67,19 +97,30 @@ const APP: () = {
         }
     }
 
-    #[task(binds = TIM2, resources = [timer, status])]
+    #[task(binds = TIM2, resources = [timer, status, tx])]
     fn update(cx: update::Context) {
-        let update::Resources { timer, status, .. } = cx.resources;
+        let update::Resources {
+            timer, status, tx, ..
+        } = cx.resources;
 
         rprintln!("Update");
 
-        status.toggle().unwrap();
+        tx.write_str("AT\r\n").unwrap();
+
+        // status.toggle().unwrap();
 
         timer.clear_interrupt(Event::TimeOut);
     }
 
-    extern "C" {
-        fn EXTI0();
+    #[task(binds = USART1, resources = [status, rx])]
+    fn serial_recv(cx: serial_recv::Context) {
+        let serial_recv::Resources { status, rx, .. } = cx.resources;
+
+        let byte = rx.read().unwrap();
+
+        rprintln!("Received {}", byte);
+
+        status.toggle().unwrap();
     }
 };
 
