@@ -1,23 +1,6 @@
-[target.thumbv6m-none-eabi]
-runner = 'gdb-multiarch'
-rustflags = [
-  "-C", "link-arg=-Tlink.x",
-]
-
-[target.thumbv7m-none-eabi]
-runner = 'gdb-multiarch'
-rustflags = [
-  "-C", "link-arg=-Tlink.x",
-]
-
-[target.thumbv7em-none-eabi]
-runner = 'gdb-multiarch'
-rustflags = [
-  "-C", "link-arg=-Tlink.x",
-]
-
 [target.thumbv7em-none-eabihf]
-runner = 'gdb-multiarch'
+# runner = 'gdb-multiarch'
+runner = 'probe-run --chip STM32F411CEUx'
 rustflags = [
   "-C", "link-arg=-Tlink.x",
 ]

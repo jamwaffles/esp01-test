@@ -7,10 +7,23 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cortex-m-rt = "0.6.12"
+cortex-m-rt = "0.6.13"
 cortex-m = "0.6.3"
 arrayvec = { version = "0.5.1", default-features = false }
-rtt-target = { version =  "0.2.2", features = ["cortex-m"] }
-stm32f4xx-hal = { version = "0.8.3", features = ["rt", "stm32f411"] }
+rtt-target = { version = "0.2.2", features = ["cortex-m"] }
+stm32f4xx-hal = { git = "https://github.com/stm32-rs/stm32f4xx-hal", rev = "4a1a019f8e6e81a69c726bcab1f7caadefdbd32e", features = ["rt", "stm32f411"] }
 cortex-m-rtic = "0.5.5"
 embedded-hal = "0.2.4"
+atat = { git = "https://github.com/BlackbirdHQ/atat.git", rev = "fd052b9f011f96c7c913bdf4399d25a62d1a9c36", default-features = false, features = [ "derive" ] }
+heapless = "0.5.5"
+nb = "1.0.0"
+serde = { version = "1.0.116", default-features = false }
+serde_at = "0.5.1"
+
+[dependencies.panic-probe]
+git = "https://github.com/knurling-rs/probe-run"
+branch = "main"
+features = [ "print-rtt" ]
+
+[profile.release]
+debug = 1
