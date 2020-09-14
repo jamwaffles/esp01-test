@@ -153,7 +153,7 @@ const APP: () = {
     }
 
     // #[task(spawn = [at_loop], resources = [ingress])]
-    #[task(schedule = [at_loop], resources = [ingress])]
+    #[task(schedule = [at_loop], resources = [ingress], priority = 2)]
     fn at_loop(mut ctx: at_loop::Context) {
         // rprintln!("Digest");
         let at_loop::Resources { mut ingress, .. } = ctx.resources;
@@ -163,11 +163,11 @@ const APP: () = {
         // ctx.spawn.at_loop().unwrap();
 
         ctx.schedule
-            .at_loop(ctx.scheduled + 1_000_000.cycles())
+            .at_loop(ctx.scheduled + 10_000.cycles())
             .unwrap();
     }
 
-    #[task(binds = USART1, priority = 4, resources = [status, rx, ingress])]
+    #[task(binds = USART1, priority = 3, resources = [status, rx, ingress])]
     fn serial_recv(mut ctx: serial_recv::Context) {
         let serial_recv::Resources {
             status,
@@ -188,5 +188,6 @@ const APP: () = {
     // Extra interrupts for software tasks
     extern "C" {
         fn EXTI0();
+        fn USART2();
     }
 };
